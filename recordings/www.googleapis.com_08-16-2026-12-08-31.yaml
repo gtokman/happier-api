@@ -1,0 +1,288 @@
+openapi: 3.0.0
+info:
+  title: HarToOpenApi
+  version: 1.0.0
+  description: >-
+    OpenAPI spec generated from HAR data for www.googleapis.com on
+    2026-08-16T16:08:32.290Z
+paths:
+  /identitytoolkit/v3/relyingparty/getAccountInfo:
+    parameters: []
+    post:
+      description: ''
+      operationId: postIdentitytoolkitV3RelyingpartyGetAccountInfo
+      parameters:
+        - description: key
+          in: query
+          name: key
+          schema:
+            default: AIzaSyABE1IfEuM2otawLA3YxezQaS36nbR-3Jg
+            example: AIzaSyABE1IfEuM2otawLA3YxezQaS36nbR-3Jg
+            type: string
+        - description: baggage
+          in: header
+          name: baggage
+          schema:
+            default: >-
+              sentry-environment=production,sentry-public_key=e3b3c694d0961e304836cb3ff31861a5,sentry-release=com.happier.mobile%401.2.1%2B1,sentry-trace_id=e82dcab7e5d74cbc9643bfb5317aa219
+            example: >-
+              sentry-environment=production,sentry-public_key=e3b3c694d0961e304836cb3ff31861a5,sentry-release=com.happier.mobile%401.2.1%2B1,sentry-trace_id=e82dcab7e5d74cbc9643bfb5317aa219
+            type: string
+        - description: X-Client-Version
+          in: header
+          name: X-Client-Version
+          schema:
+            default: iOS/FirebaseSDK/10.29.0/FirebaseCore-iOS
+            example: iOS/FirebaseSDK/10.29.0/FirebaseCore-iOS
+            type: string
+        - description: X-Ios-Bundle-Identifier
+          in: header
+          name: X-Ios-Bundle-Identifier
+          schema:
+            default: com.happier.mobile
+            example: com.happier.mobile
+            type: string
+        - description: sentry-trace
+          in: header
+          name: sentry-trace
+          schema:
+            default: e82dcab7e5d74cbc9643bfb5317aa219-551f72b65a1e4196-0
+            example: e82dcab7e5d74cbc9643bfb5317aa219-551f72b65a1e4196-0
+            type: string
+        - description: X-Firebase-GMPID
+          in: header
+          name: X-Firebase-GMPID
+          schema:
+            default: 1:1025060920555:ios:bd9c0fa95303a4104a72ae
+            example: 1:1025060920555:ios:bd9c0fa95303a4104a72ae
+            type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              idToken: >-
+                REDACTED_ID_TOKEN
+            schema:
+              additionalProperties: false
+              properties:
+                idToken:
+                  type: string
+              required: []
+              title: IdentitytoolkitV3RelyingpartyGetAccountInfoPostRequest
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                kind: identitytoolkit#GetAccountInfoResponse
+                users:
+                  - createdAt: '1771548381834'
+                    disabled: false
+                    displayName: Example User
+                    email: user@example.com
+                    emailVerified: true
+                    lastLoginAt: '1786896394131'
+                    lastRefreshAt: '2026-08-16T16:06:34.131Z'
+                    localId: REDACTED_UID
+                    passwordHash: UkVEQUNURUQ=
+                    passwordUpdatedAt: 1771548551278
+                    providerUserInfo:
+                      - displayName: Example User
+                        email: user@example.com
+                        federatedId: user@example.com
+                        providerId: password
+                        rawId: user@example.com
+                    tenantId: happier-grocery-e8oja
+                    validSince: '1771548551'
+              schema:
+                additionalProperties: false
+                properties:
+                  kind:
+                    type: string
+                  users:
+                    items:
+                      additionalProperties: false
+                      properties:
+                        createdAt:
+                          type: string
+                        disabled:
+                          type: boolean
+                        displayName:
+                          type: string
+                        email:
+                          type: string
+                        emailVerified:
+                          type: boolean
+                        lastLoginAt:
+                          type: string
+                        lastRefreshAt:
+                          format: date-time
+                          type: string
+                        localId:
+                          type: string
+                        passwordHash:
+                          type: string
+                        passwordUpdatedAt:
+                          type: integer
+                        providerUserInfo:
+                          items:
+                            additionalProperties: false
+                            properties:
+                              displayName:
+                                type: string
+                              email:
+                                type: string
+                              federatedId:
+                                type: string
+                              providerId:
+                                type: string
+                              rawId:
+                                type: string
+                            required: []
+                            title: ProviderUserInfo
+                            type: object
+                          type: array
+                        tenantId:
+                          type: string
+                        validSince:
+                          format: integer
+                          type: string
+                      required: []
+                      title: User
+                      type: object
+                    type: array
+                required: []
+                title: IdentitytoolkitV3RelyingpartyGetAccountInfoPostRequest
+                type: object
+          description: ''
+          headers:
+            X-Content-Type-Options:
+              description: Custom header X-Content-Type-Options
+              schema:
+                type: string
+      summary: Post Identitytoolkit V 3 Relyingparty Get Account Info
+  /identitytoolkit/v3/relyingparty/verifyPassword:
+    parameters: []
+    post:
+      description: ''
+      operationId: postIdentitytoolkitV3RelyingpartyVerifyPassword
+      parameters:
+        - description: key
+          in: query
+          name: key
+          schema:
+            default: AIzaSyABE1IfEuM2otawLA3YxezQaS36nbR-3Jg
+            example: AIzaSyABE1IfEuM2otawLA3YxezQaS36nbR-3Jg
+            type: string
+        - description: baggage
+          in: header
+          name: baggage
+          schema:
+            default: >-
+              sentry-environment=production,sentry-public_key=e3b3c694d0961e304836cb3ff31861a5,sentry-release=com.happier.mobile%401.2.1%2B1,sentry-trace_id=e82dcab7e5d74cbc9643bfb5317aa219
+            example: >-
+              sentry-environment=production,sentry-public_key=e3b3c694d0961e304836cb3ff31861a5,sentry-release=com.happier.mobile%401.2.1%2B1,sentry-trace_id=e82dcab7e5d74cbc9643bfb5317aa219
+            type: string
+        - description: X-Client-Version
+          in: header
+          name: X-Client-Version
+          schema:
+            default: iOS/FirebaseSDK/10.29.0/FirebaseCore-iOS
+            example: iOS/FirebaseSDK/10.29.0/FirebaseCore-iOS
+            type: string
+        - description: X-Ios-Bundle-Identifier
+          in: header
+          name: X-Ios-Bundle-Identifier
+          schema:
+            default: com.happier.mobile
+            example: com.happier.mobile
+            type: string
+        - description: sentry-trace
+          in: header
+          name: sentry-trace
+          schema:
+            default: e82dcab7e5d74cbc9643bfb5317aa219-551f72b65a1e4196-0
+            example: e82dcab7e5d74cbc9643bfb5317aa219-551f72b65a1e4196-0
+            type: string
+        - description: X-Firebase-GMPID
+          in: header
+          name: X-Firebase-GMPID
+          schema:
+            default: 1:1025060920555:ios:bd9c0fa95303a4104a72ae
+            example: 1:1025060920555:ios:bd9c0fa95303a4104a72ae
+            type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              clientType: CLIENT_TYPE_IOS
+              email: user@example.com
+              password: REDACTED_PASSWORD
+              returnSecureToken: true
+              tenantId: happier-grocery-e8oja
+            schema:
+              additionalProperties: false
+              properties:
+                clientType:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                returnSecureToken:
+                  type: boolean
+                tenantId:
+                  type: string
+              required: []
+              title: IdentitytoolkitV3RelyingpartyVerifyPasswordPostRequest
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                displayName: Example User
+                email: user@example.com
+                expiresIn: '3600'
+                idToken: >-
+                  REDACTED_ID_TOKEN
+                kind: identitytoolkit#VerifyPasswordResponse
+                localId: REDACTED_UID
+                refreshToken: >-
+                  REDACTED_REFRESH_TOKEN
+                registered: true
+              schema:
+                additionalProperties: false
+                properties:
+                  displayName:
+                    type: string
+                  email:
+                    type: string
+                  expiresIn:
+                    format: integer
+                    type: string
+                  idToken:
+                    type: string
+                  kind:
+                    type: string
+                  localId:
+                    type: string
+                  refreshToken:
+                    type: string
+                  registered:
+                    type: boolean
+                required: []
+                title: IdentitytoolkitV3RelyingpartyVerifyPasswordPostRequest
+                type: object
+          description: ''
+          headers:
+            X-Content-Type-Options:
+              description: Custom header X-Content-Type-Options
+              schema:
+                type: string
+      summary: Post Identitytoolkit V 3 Relyingparty Verify Password
+servers:
+  - url: https://www.googleapis.com

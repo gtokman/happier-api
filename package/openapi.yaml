@@ -1,0 +1,811 @@
+openapi: 3.1.0
+info:
+  title: Happier Grocery Commerce API (unofficial)
+  version: 0.1.0
+  summary: Reverse-engineered spec for ecom-api.getjaldi.com
+  description: |
+    Unofficial OpenAPI description of the Happier Grocery storefront API, derived
+    from a Proxyman capture of the iOS app (`Happier/1 CFNetwork/3896.100.1.2.1`)
+    on 2026-08-16. Not endorsed by or affiliated with Happier Grocery.
+
+    ## Authentication
+
+    Happier has **no login endpoint of its own**. Clients authenticate against
+    Google Identity Platform (Firebase Auth) in multi-tenant mode and present the
+    resulting ID token here. The iOS app runs Firebase SDK 10.29.0, which uses
+    the *legacy* v3 `relyingparty` API on `www.googleapis.com`:
+
+    ```http
+    POST https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=AIza…
+    x-ios-bundle-identifier: com.happier.mobile
+    x-firebase-gmpid: 1:1025060920555:ios:bd9c0fa95303a4104a72ae
+    content-type: application/json
+
+    {"email":"…","password":"…","clientType":"CLIENT_TYPE_IOS",
+     "tenantId":"happier-grocery-e8oja","returnSecureToken":true}
+    ```
+
+    - Google Cloud project: `upbeat-nova-376618`
+    - Identity Platform tenant: `happier-grocery-e8oja`
+    - Sign-in provider: `password`
+    - The API key is restricted to bundle `com.happier.mobile`, so
+      `x-ios-bundle-identifier` must be sent or Google answers `403`.
+    - ID tokens live 3600s; refresh at `POST https://securetoken.googleapis.com/v1/token?key=…`
+      with `grant_type=refresh_token` (form-encoded).
+
+    The token is sent **raw, with no `Bearer` prefix**, in `x-vendora-authentication`.
+
+    ## Non-REST surfaces
+
+    Two endpoints here are not really REST and are described only loosely:
+
+    - `POST /graphql` — full product detail and order detail.
+    - `GET /trpc/{procedures}` — tRPC HTTP batch link. Procedure names are joined
+      with commas in the path and `input` is a JSON object keyed by call index.
+
+servers:
+  - url: https://ecom-api.getjaldi.com
+
+security:
+  - vendoraAuth: []
+
+tags:
+  - name: business
+  - name: products
+  - name: checkout
+  - name: orders
+  - name: user
+  - name: loyalty
+  - name: analytics
+  - name: graphql
+  - name: trpc
+
+components:
+  securitySchemes:
+    vendoraAuth:
+      type: apiKey
+      in: header
+      name: x-vendora-authentication
+      description: >-
+        Firebase ID token from Identity Platform tenant `happier-grocery-e8oja`,
+        sent raw (no `Bearer` prefix).
+
+  parameters:
+    BusinessHeader:
+      name: business
+      in: header
+      required: true
+      description: Business (tenant) id. Happier Grocery is `6499aa6a78f0258111803a89`.
+      schema:
+        type: string
+        default: 6499aa6a78f0258111803a89
+    LocationHeader:
+      name: location
+      in: header
+      required: false
+      description: Store location id, scoping catalog and pricing reads.
+      schema:
+        type: string
+        default: 6499ba0478f0258111803da0
+    OrderIdQuery:
+      name: orderId
+      in: query
+      required: true
+      schema:
+        $ref: "#/components/schemas/ObjectId"
+
+  schemas:
+    ObjectId:
+      type: string
+      pattern: "^[a-f0-9]{24}$"
+      examples: ["6499aa6a78f0258111803a89"]
+
+    OrderType:
+      type: string
+      enum: [PICKUP, DELIVERY, SHIPPING]
+
+    StatusEnvelope:
+      type: object
+      description: Standard wrapper on most REST responses.
+      properties:
+        status: { type: boolean }
+        message: { type: string }
+      required: [status]
+
+    Image:
+      type: object
+      properties:
+        src: { type: string, format: uri }
+        license: { type: [string, "null"] }
+        origin: { type: [string, "null"] }
+        blurhash: { type: [string, "null"] }
+      required: [src]
+
+    Product:
+      type: object
+      additionalProperties: true
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        compareAt: { type: number }
+        brand: { type: string }
+        category: { type: string }
+        subCategory: { type: string }
+        size: { type: [number, string] }
+        unitOfMeasure: { type: string }
+        SKU: { type: string }
+        PLU: { type: string }
+        upcBarcode: { type: string }
+        tags: { type: array, items: { type: string } }
+        attributes: { type: array, items: { type: string } }
+        images: { type: array, items: { $ref: "#/components/schemas/Image" } }
+        active: { type: boolean }
+        taxable: { type: boolean }
+        ebtEligible: { type: boolean }
+        containsAlcohol: { type: boolean }
+        soldByWeight: { type: boolean }
+      required: [_id, name, price]
+
+    ProductInventory:
+      type: object
+      additionalProperties: true
+      description: A product as stocked at one location. Cart line items reference this `_id`.
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        product: { $ref: "#/components/schemas/Product" }
+        location: { $ref: "#/components/schemas/ObjectId" }
+        price: { type: number }
+        active: { type: boolean }
+        inStock: { type: boolean }
+        inStockQuantity: { type: integer }
+        discount:
+          type: object
+          properties:
+            hasDiscount: { type: boolean }
+            discountedPrice: { type: number }
+            labels: { type: array, items: { type: string } }
+      required: [_id, product, price]
+
+    Address:
+      type: object
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        address1: { type: string }
+        address2: { type: string }
+        city: { type: string }
+        state: { type: string }
+        postalCode: { type: string }
+        country: { type: string, default: US }
+        phone: { type: string }
+        email: { type: string, format: email }
+
+    LineItem:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { $ref: "#/components/schemas/ObjectId" }
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        productID: { $ref: "#/components/schemas/ObjectId" }
+        productInventoryID: { $ref: "#/components/schemas/ObjectId" }
+        name: { type: string }
+        price: { type: number }
+        quantity: { type: integer }
+        itemTotal: { type: number }
+        images: { type: array, items: { $ref: "#/components/schemas/Image" } }
+        modifiers: { type: array, items: {} }
+      required: [id, _id, productID, productInventoryID, name, price, quantity]
+
+    Checkout:
+      type: object
+      additionalProperties: true
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        business: { $ref: "#/components/schemas/ObjectId" }
+        location: { $ref: "#/components/schemas/ObjectId" }
+        status: { type: string, examples: ["created"] }
+        orderType: { $ref: "#/components/schemas/OrderType" }
+        tip: { type: number }
+        sessionID: { type: string }
+        lineItems: { type: array, items: { $ref: "#/components/schemas/LineItem" } }
+        metadata: { type: object, additionalProperties: true }
+
+    AnalyticsEvent:
+      type: object
+      properties:
+        eventName:
+          type: string
+          examples: ["auth:sign_in", "cart:item_added", "catalog:product_viewed"]
+        properties:
+          type: object
+          additionalProperties: true
+          properties:
+            platform: { type: string, examples: ["mobile"] }
+      required: [eventName, properties]
+
+paths:
+  /api/v1/business/settings:
+    get:
+      tags: [business]
+      operationId: getBusinessSettings
+      summary: Storefront configuration (theme, feature flags, locations)
+      security: []
+      parameters:
+        - name: businessID
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/ObjectId" }
+      responses:
+        "200":
+          description: Settings document
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      settings: { type: object, additionalProperties: true }
+        "304": { description: Not modified (send `if-none-match`) }
+
+  /api/v1/business/location/deliverySlots:
+    post:
+      tags: [business]
+      operationId: getDeliverySlots
+      summary: Fulfillment windows for a location, validated against a cart
+      parameters:
+        - name: businessLocationID
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/ObjectId" }
+        - name: validateOffCart
+          in: query
+          description: Validate each slot against the supplied cart. The app always sends `true`.
+          schema: { type: boolean, default: true }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cart:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      productID: { $ref: "#/components/schemas/ObjectId" }
+                      id: { $ref: "#/components/schemas/ObjectId" }
+                      _id: { $ref: "#/components/schemas/ObjectId" }
+      responses:
+        "200":
+          description: Slots and fulfillment capabilities
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    additionalProperties: true
+                    properties:
+                      todaysHours:
+                        type: object
+                        properties:
+                          openToday: { type: boolean }
+                          openTime: { type: string, format: date-time }
+                          closeTime: { type: string, format: date-time }
+                      deliveryEnabled: { type: boolean }
+                      pickupEnabled: { type: boolean }
+                      shippingEnabled: { type: boolean }
+                      asapDeliveryEnabled: { type: boolean }
+                      asapPickupEnabled: { type: boolean }
+                      asapDeliveryOrderPadding: { type: integer, description: Lead-time minutes }
+                      asapPickupOrderPadding: { type: integer }
+                      deliverySlots:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            friendlyDate: { type: string }
+                            dayName: { type: string }
+                            beginningOfSlot: { type: string, format: date-time }
+                            timeSlots:
+                              type: array
+                              items: { type: string, examples: ["01:00 PM - 03:00 PM"] }
+
+  /api/v1/products/related:
+    get:
+      tags: [products]
+      operationId: getRelatedProducts
+      summary: Related products for a product inventory id
+      parameters:
+        - name: productID
+          in: query
+          required: true
+          description: A product **inventory** id, despite the name.
+          schema: { $ref: "#/components/schemas/ObjectId" }
+        - name: numResults
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Related products
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      relatedProducts:
+                        type: array
+                        items: { $ref: "#/components/schemas/ProductInventory" }
+
+  /api/v3/public/products/groups/{groupId}/inventory:
+    get:
+      tags: [products]
+      operationId: getProductGroupInventory
+      summary: Every product in a merchandising group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/ObjectId" }
+        - name: orderType
+          in: query
+          schema: { $ref: "#/components/schemas/OrderType" }
+        - $ref: "#/components/parameters/LocationHeader"
+      responses:
+        "200":
+          description: Group with inventory
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      productGroup:
+                        type: object
+                        additionalProperties: true
+                        properties:
+                          _id: { $ref: "#/components/schemas/ObjectId" }
+                          name: { type: string }
+                          products:
+                            type: array
+                            items: { $ref: "#/components/schemas/ProductInventory" }
+
+  /api/v2/checkouts:
+    post:
+      tags: [checkout]
+      operationId: createCheckout
+      summary: Create a checkout session from a cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                businessLocation: { $ref: "#/components/schemas/ObjectId" }
+                orderType: { $ref: "#/components/schemas/OrderType" }
+                lineItems:
+                  type: array
+                  items: { $ref: "#/components/schemas/LineItem" }
+              required: [businessLocation, lineItems]
+      responses:
+        "200":
+          description: Checkout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Checkout" }
+
+  /api/v2/checkouts/get-taxes:
+    post:
+      tags: [checkout]
+      operationId: getCheckoutTaxes
+      summary: Tax due for a checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                checkoutID: { $ref: "#/components/schemas/ObjectId" }
+                shippingAddress: { $ref: "#/components/schemas/Address" }
+                contactInfo:
+                  type: object
+                  properties:
+                    email: { type: string, format: email }
+                    phone: { type: string }
+              required: [checkoutID]
+      responses:
+        "200":
+          description: Tax amount
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      taxRequired: { type: number }
+
+  /api/v2/shipping/get-rates:
+    post:
+      tags: [checkout]
+      operationId: getShippingRates
+      summary: Available fulfillment rates (pickup appears as a $0 rate)
+      parameters:
+        - name: orderType
+          in: query
+          schema: { $ref: "#/components/schemas/OrderType" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address: { $ref: "#/components/schemas/Address" }
+                orderTotal: { type: number }
+                location: { $ref: "#/components/schemas/ObjectId" }
+              required: [orderTotal, location]
+      responses:
+        "200":
+          description: Rates
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      shippingRates:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { $ref: "#/components/schemas/ObjectId" }
+                            name: { type: string }
+                            amount: { type: number }
+                            orderType: { $ref: "#/components/schemas/OrderType" }
+
+  /api/v3/checkout/offers:
+    get:
+      tags: [checkout]
+      operationId: getCheckoutOffers
+      summary: Coupons, SNAP eligibility and bottle deposits for a checkout
+      parameters:
+        - name: checkoutID
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/ObjectId" }
+      responses:
+        "200":
+          description: Offers
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties: true
+                        properties:
+                          bottleDepositAmount: { type: number }
+                          numBottleDeposits: { type: integer }
+                          snapEligibleAmount: { type: number }
+                          snapEligibleItems: { type: array, items: {} }
+                          coupons: { type: array, items: {} }
+                          allCoupons: { type: array, items: { type: object, additionalProperties: true } }
+
+  /api/v2/order/delivery-details:
+    get:
+      tags: [orders]
+      operationId: getOrderDeliveryDetails
+      summary: Delivery details for an order
+      parameters:
+        - $ref: "#/components/parameters/OrderIdQuery"
+      responses:
+        "200":
+          description: Delivery details. Empty object for non-delivery orders.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+
+  /api/v2/order/refunds:
+    get:
+      tags: [orders]
+      operationId: getOrderRefunds
+      parameters:
+        - $ref: "#/components/parameters/OrderIdQuery"
+      responses:
+        "200":
+          description: Refunds
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      refunds: { type: array, items: {} }
+
+  /api/v2/orders/payments:
+    get:
+      tags: [orders]
+      operationId: getOrderPayments
+      summary: Payments recorded against an order
+      parameters:
+        - $ref: "#/components/parameters/OrderIdQuery"
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      payments:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                          properties:
+                            _id: { $ref: "#/components/schemas/ObjectId" }
+                            checkout: { $ref: "#/components/schemas/ObjectId" }
+                            paymentType: { type: string, examples: ["DATA_CAP"] }
+                            amount: { type: number }
+                            status: { type: string, examples: ["paid"] }
+                            amountRefunded: { type: number }
+
+  /api/v2/user/me:
+    get:
+      tags: [user]
+      operationId: getCurrentUser
+      summary: Signed-in user profile
+      responses:
+        "200":
+          description: >-
+            User profile. Only ever returned `304` during the capture, so the body
+            shape is unverified.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "304": { description: Not modified }
+
+  /api/v2/user/address:
+    get:
+      tags: [user]
+      operationId: listUserAddresses
+      responses:
+        "200":
+          description: Saved addresses. Shape unverified (only `304` observed).
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "304": { description: Not modified }
+
+  /api/v2/user/cards:
+    get:
+      tags: [user]
+      operationId: listUserCards
+      summary: Saved payment methods
+      responses:
+        "200":
+          description: Stripe and Forage (EBT/SNAP) payment methods
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paymentMethods: { type: array, items: {} }
+                  foragePaymentMethods: { type: array, items: {} }
+        "304": { description: Not modified }
+
+  /api/v2/user/cards/setup-intent:
+    get:
+      tags: [user]
+      operationId: createCardSetupIntent
+      summary: Stripe SetupIntent client secret for attaching a card
+      responses:
+        "200":
+          description: Client secret — confirm it with Stripe's SDK.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client_secret: { type: string }
+                required: [client_secret]
+
+  /api/v2/user/loyalty/get-customer-card-list:
+    get:
+      tags: [loyalty]
+      operationId: getLoyaltyCards
+      summary: Loyalty tiers available to the user
+      description: >-
+        The one route observed requiring the ID token in a plain `authorization`
+        header **in addition to** `x-vendora-authentication`.
+      parameters:
+        - name: authorization
+          in: header
+          required: true
+          description: Same Firebase ID token, raw.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Loyalty cards
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      cards:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                          properties:
+                            id: { type: integer }
+                            name: { type: string, examples: ["Happier Green"] }
+                            slug: { type: string }
+                            isBaseCard: { type: boolean }
+                            pointsRate: { type: string }
+                            currencyConversionRate: { type: string }
+        "304": { description: Not modified }
+
+  /api/v3/user/loyalty/profile:
+    get:
+      tags: [loyalty]
+      operationId: getLoyaltyProfile
+      responses:
+        "200":
+          description: Loyalty standing. Shape unverified (only `304` observed).
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "304": { description: Not modified }
+
+  /api/v1/analytics/auth-events:
+    post:
+      tags: [analytics]
+      operationId: postAuthEvent
+      summary: Auth telemetry (e.g. `auth:sign_in`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnalyticsEvent" }
+      responses:
+        "200": { description: Accepted. No response body. }
+
+  /api/v1/analytics/cart-events:
+    post:
+      tags: [analytics]
+      operationId: postCartEvent
+      summary: Cart telemetry (e.g. `cart:item_added`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnalyticsEvent" }
+      responses:
+        "200": { description: Accepted. No response body. }
+
+  /api/v1/analytics/catalog-events:
+    post:
+      tags: [analytics]
+      operationId: postCatalogEvent
+      summary: Catalog telemetry (e.g. `catalog:product_viewed`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnalyticsEvent" }
+      responses:
+        "200": { description: Accepted. No response body. }
+
+  /graphql:
+    post:
+      tags: [graphql]
+      operationId: graphql
+      summary: GraphQL endpoint
+      description: |
+        Operations observed: `ProductInventory($productInventoryId: ID!)` for full
+        product detail, and `GetOrderById($id: ID!)` for order detail including
+        line items. Both query strings ship with the package.
+      parameters:
+        - $ref: "#/components/parameters/LocationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operationName: { type: string }
+                query: { type: string }
+                variables: { type: object, additionalProperties: true }
+              required: [query]
+      responses:
+        "200":
+          description: GraphQL response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: [object, "null"], additionalProperties: true }
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      properties:
+                        message: { type: string }
+
+  /trpc/{procedures}:
+    get:
+      tags: [trpc]
+      operationId: trpcBatch
+      summary: tRPC HTTP batch link
+      description: |
+        `procedures` is a comma-separated list of procedure names; `input` is a
+        JSON object keyed by call index. The response is a positional array of
+        `{ result: { data } }` envelopes.
+
+        Procedures observed: `products.getAll`, `products.getFilters`,
+        `products.getSubCategories`, `products.getCategoriesWithProducts`,
+        `orders.getUserOrderCount`.
+
+        Example:
+
+        ```
+        GET /trpc/products.getFilters,products.getAll?batch=1
+            &input={"0":{"searchQuery":"Sardines"},
+                    "1":{"searchQuery":"Sardines","orderType":"PICKUP","useSemanticSearch":true}}
+        ```
+      parameters:
+        - name: procedures
+          in: path
+          required: true
+          schema: { type: string, examples: ["products.getFilters,products.getAll"] }
+        - name: batch
+          in: query
+          required: true
+          schema: { type: integer, enum: [1] }
+        - name: input
+          in: query
+          required: true
+          description: JSON object keyed by call index.
+          schema: { type: string }
+        - $ref: "#/components/parameters/LocationHeader"
+      responses:
+        "200":
+          description: Positional array of tRPC result envelopes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    result:
+                      type: object
+                      properties:
+                        data: {}
+                    error:
+                      type: object
+                      additionalProperties: true
