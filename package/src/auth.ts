@@ -26,7 +26,7 @@
  * ```
  */
 
-import { HappierAuthError } from "./errors.ts";
+import { HappierAuthError } from "./errors.js";
 
 /** Google Cloud project backing Happier's Firebase Auth. */
 export const HAPPIER_FIREBASE_PROJECT_ID = "upbeat-nova-376618";

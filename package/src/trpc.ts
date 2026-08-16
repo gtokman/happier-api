@@ -1,6 +1,6 @@
-import { HappierTrpcError } from "./errors.ts";
-import type { HappierHttp } from "./http.ts";
-import type { ObjectId, OrderType, Product, ProductInventory } from "./types.ts";
+import { HappierTrpcError } from "./errors.js";
+import type { HappierHttp } from "./http.js";
+import type { ObjectId, OrderType, Product, ProductInventory } from "./types.js";
 
 /**
  * tRPC surface at `GET /trpc/<procedures>?batch=1&input=<json>`.

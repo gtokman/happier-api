@@ -1,7 +1,7 @@
-import { FirebaseAuth, signInWithEmailAndPassword, type AuthConfig } from "./auth.ts";
-import { GraphQLApi } from "./graphql.ts";
-import { HappierHttp, type ClientConfig } from "./http.ts";
-import { TrpcApi } from "./trpc.ts";
+import { FirebaseAuth, signInWithEmailAndPassword, type AuthConfig } from "./auth.js";
+import { GraphQLApi } from "./graphql.js";
+import { HappierHttp, type ClientConfig } from "./http.js";
+import { TrpcApi } from "./trpc.js";
 import type {
   Address,
   AnalyticsEvent,
@@ -31,7 +31,7 @@ import type {
   RelatedProductsResponse,
   SetupIntentResponse,
   UserAddressesResponse,
-} from "./types.ts";
+} from "./types.js";
 
 /**
  * Client for the Happier Grocery commerce API.

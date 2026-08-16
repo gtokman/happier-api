@@ -1,5 +1,5 @@
-import type { FirebaseAuth } from "./auth.ts";
-import { HappierApiError } from "./errors.ts";
+import type { FirebaseAuth } from "./auth.js";
+import { HappierApiError } from "./errors.js";
 
 export const HAPPIER_BASE_URL = "https://ecom-api.getjaldi.com";
 

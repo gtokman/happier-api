@@ -1,6 +1,6 @@
-import { HappierGraphQLError } from "./errors.ts";
-import type { HappierHttp } from "./http.ts";
-import type { ObjectId, Order, ProductInventory } from "./types.ts";
+import { HappierGraphQLError } from "./errors.js";
+import type { HappierHttp } from "./http.js";
+import type { ObjectId, Order, ProductInventory } from "./types.js";
 
 /** The two operations the app was observed issuing, verbatim. */
 export const PRODUCT_INVENTORY_QUERY = /* GraphQL */ `

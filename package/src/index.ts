@@ -6,15 +6,15 @@
  * endorsed by or affiliated with Happier Grocery.
  */
 
-export { HappierClient } from "./client.ts";
-export type { ClientConfig, RequestOptions } from "./http.ts";
+export { HappierClient } from "./client.js";
+export type { ClientConfig, RequestOptions } from "./http.js";
 export {
   HAPPIER_BASE_URL,
   HAPPIER_BUSINESS_ID,
   HAPPIER_LOCATION_ID,
   HAPPIER_USER_AGENT,
   HappierHttp,
-} from "./http.ts";
+} from "./http.js";
 
 export {
   FirebaseAuth,
@@ -30,17 +30,17 @@ export {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signUpWithEmailAndPassword,
-} from "./auth.ts";
+} from "./auth.js";
 export type {
   AuthConfig,
   AuthSession,
   FirebaseAccountInfo,
   HappierIdTokenClaims,
-} from "./auth.ts";
+} from "./auth.js";
 
-export { GraphQLApi, GET_ORDER_BY_ID_QUERY, PRODUCT_INVENTORY_QUERY } from "./graphql.ts";
-export { TrpcApi } from "./trpc.ts";
-export type { ProductFilters, ProductsGetAllInput, ProductsGetAllResult } from "./trpc.ts";
+export { GraphQLApi, GET_ORDER_BY_ID_QUERY, PRODUCT_INVENTORY_QUERY } from "./graphql.js";
+export { TrpcApi } from "./trpc.js";
+export type { ProductFilters, ProductsGetAllInput, ProductsGetAllResult } from "./trpc.js";
 
 export {
   HappierApiError,
@@ -48,6 +48,6 @@ export {
   HappierError,
   HappierGraphQLError,
   HappierTrpcError,
-} from "./errors.ts";
+} from "./errors.js";
 
-export type * from "./types.ts";
+export type * from "./types.js";
