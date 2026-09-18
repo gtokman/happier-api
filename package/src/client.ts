@@ -27,6 +27,7 @@ import type {
   OrderDetail,
   OrderPaymentsResponse,
   OrderRefundsResponse,
+  OrdersPage,
   OrderType,
   PaymentMethodsResponse,
   ProductGroupInventoryResponse,
@@ -205,6 +206,17 @@ class OrdersResource {
    */
   get(orderId: ObjectId): Promise<Order> {
     return this.graphql.getOrderById(orderId);
+  }
+
+  /**
+   * The signed-in user's order history, newest first. Same `Order` shape as
+   * {@link get}, line items included. Backed by the `GetOrders` GraphQL query,
+   * which takes no arguments.
+   */
+  async list(): Promise<OrdersPage> {
+    const page = await this.graphql.getOrders();
+    const orders = [...page.orders].sort((a, b) => Number(b.datePlaced) - Number(a.datePlaced));
+    return { ...page, orders };
   }
 
   /**

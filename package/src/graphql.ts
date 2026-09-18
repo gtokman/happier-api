@@ -1,6 +1,6 @@
 import { HappierGraphQLError } from "./errors.js";
 import type { HappierHttp } from "./http.js";
-import type { ObjectId, Order, ProductInventory } from "./types.js";
+import type { ObjectId, Order, OrdersPage, ProductInventory } from "./types.js";
 
 /** The two operations the app was observed issuing, verbatim. */
 export const PRODUCT_INVENTORY_QUERY = /* GraphQL */ `
@@ -121,9 +121,7 @@ export const PRODUCT_INVENTORY_QUERY = /* GraphQL */ `
   }
 `;
 
-export const GET_ORDER_BY_ID_QUERY = /* GraphQL */ `
-  query GetOrderById($id: ID!) {
-    getOrderById(id: $id) {
+const ORDER_FIELDS = /* GraphQL */ `
       _id
       orderNumber
       externalID
@@ -172,6 +170,25 @@ export const GET_ORDER_BY_ID_QUERY = /* GraphQL */ `
         isLoyaltyTransaction
         points
       }
+`;
+
+export const GET_ORDER_BY_ID_QUERY = /* GraphQL */ `
+  query GetOrderById($id: ID!) {
+    getOrderById(id: $id) {${ORDER_FIELDS}    }
+  }
+`;
+
+/**
+ * Every order belonging to the signed-in user. Not observed in the app capture;
+ * the field exists on the schema (`Query.getOrders: OrdersResponse`) and takes
+ * no arguments.
+ */
+export const GET_ORDERS_QUERY = /* GraphQL */ `
+  query GetOrders {
+    getOrders {
+      totalPages
+      totalResults
+      orders {${ORDER_FIELDS}      }
     }
   }
 `;
@@ -224,5 +241,11 @@ export class GraphQLApi {
   async getOrderById(id: ObjectId): Promise<Order> {
     const data = await this.request<{ getOrderById: Order }>(GET_ORDER_BY_ID_QUERY, { id });
     return data.getOrderById;
+  }
+
+  /** The signed-in user's orders, with pagination totals. */
+  async getOrders(): Promise<OrdersPage> {
+    const data = await this.request<{ getOrders: OrdersPage }>(GET_ORDERS_QUERY);
+    return data.getOrders;
   }
 }
