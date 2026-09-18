@@ -1,6 +1,6 @@
 {
   "name": "happier-api",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Unofficial JavaScript/TypeScript client for the Happier Grocery (Jaldi/Vendora) commerce API",
   "type": "module",
   "main": "./dist/index.js",
