@@ -3,6 +3,8 @@
  *
  *   HAPPIER_EMAIL=you@example.com HAPPIER_PASSWORD=… bun run examples/browse.ts
  *
+ * Set HAPPIER_ORDER_ID to also print one of your past orders.
+ *
  * Nothing here places an order.
  */
 
@@ -53,3 +55,22 @@ console.log(`rates: ${rates.shippingRates.map((r) => `${r.name} $${r.amount}`).j
 
 const orders = await client.orders.countSince(new Date(Date.now() - 30 * 864e5));
 console.log(`\norders in the last 30 days: ${orders}`);
+
+const { data: loyalty } = await client.loyalty.profile();
+console.log(
+  `loyalty: ${loyalty.loyaltyAccount.pointsBalance} pts` +
+    ` (${loyalty.loyaltyAccount.platformSpecificData.currentCardSlug ?? "no card"})`,
+);
+
+const orderId = process.env.HAPPIER_ORDER_ID;
+if (orderId) {
+  const { order, payments } = await client.orders.detail(orderId);
+  console.log(
+    `\norder #${order.orderNumber} (${order.orderType}, ${order.status})` +
+      ` placed ${new Date(Number(order.datePlaced)).toISOString()}`,
+  );
+  for (const li of order.lineItems) {
+    console.log(`  ${li.quantity}x ${li.itemName} — $${li.price}`);
+  }
+  console.log(`  total $${order.totalPrice}, paid via ${payments.map((p) => p.paymentType).join(", ")}`);
+}

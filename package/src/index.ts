@@ -40,7 +40,14 @@ export type {
 
 export { GraphQLApi, GET_ORDER_BY_ID_QUERY, PRODUCT_INVENTORY_QUERY } from "./graphql.js";
 export { TrpcApi } from "./trpc.js";
-export type { ProductFilters, ProductsGetAllInput, ProductsGetAllResult } from "./trpc.js";
+export type {
+  CategoriesWithProductsInput,
+  CategoriesWithProductsResult,
+  CategoryProduct,
+  ProductFilters,
+  ProductsGetAllInput,
+  ProductsGetAllResult,
+} from "./trpc.js";
 
 export {
   HappierApiError,

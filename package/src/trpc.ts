@@ -1,6 +1,13 @@
 import { HappierTrpcError } from "./errors.js";
 import type { HappierHttp } from "./http.js";
-import type { ObjectId, OrderType, Product, ProductInventory } from "./types.js";
+import type {
+  ObjectId,
+  OrderType,
+  Product,
+  ProductCategory,
+  ProductInventory,
+  ProductSubCategory,
+} from "./types.js";
 
 /**
  * tRPC surface at `GET /trpc/<procedures>?batch=1&input=<json>`.
@@ -78,7 +85,7 @@ export class TrpcApi {
 
   // ---- Typed wrappers for the procedures seen in the capture ----------------
 
-  /** Search / browse the catalog. Cursor-paginated. */
+  /** Search / browse the catalog. Paginated: pass `nextPage` back as `cursor` until it's `null`. */
   getAllProducts(input: ProductsGetAllInput = {}): Promise<ProductsGetAllResult> {
     return this.query<ProductsGetAllResult>("products.getAll", {
       brands: [],
@@ -94,12 +101,25 @@ export class TrpcApi {
     return this.query<ProductFilters>("products.getFilters", input);
   }
 
-  getSubCategories(input: { category: string }): Promise<unknown> {
-    return this.query("products.getSubCategories", input);
+  /** Sub-categories of a category, by its `identifier` (e.g. `"PRODUCE"`). */
+  getSubCategories(input: { category: string }): Promise<ProductSubCategory[]> {
+    return this.query<ProductSubCategory[]>("products.getSubCategories", input);
   }
 
-  getCategoriesWithProducts(input: Record<string, unknown> = {}): Promise<unknown> {
-    return this.query("products.getCategoriesWithProducts", input);
+  /**
+   * The home-screen shelves: every category in a department with its first ten
+   * products. Products are the lightweight {@link CategoryProduct} shape, not
+   * full inventory records.
+   */
+  getCategoriesWithProducts(
+    input: CategoriesWithProductsInput = {},
+  ): Promise<CategoriesWithProductsResult> {
+    return this.query<CategoriesWithProductsResult>("products.getCategoriesWithProducts", {
+      department: "GROCERY",
+      locationID: this.#http.locationId,
+      orderType: "PICKUP",
+      ...input,
+    });
   }
 
   /** Number of orders the signed-in user has placed since `fromDate`. */
@@ -110,7 +130,9 @@ export class TrpcApi {
 
 export interface ProductsGetAllInput {
   searchQuery?: string;
+  /** Category `identifier`, e.g. `"PRODUCE"`. */
   category?: string;
+  /** Sub-category `identifier`, e.g. `"FRESHCUTS"`. */
   subCategory?: string;
   brands?: string[];
   attributes?: string[];
@@ -118,15 +140,47 @@ export interface ProductsGetAllInput {
   orderType?: OrderType;
   /** Server-side semantic search — the app sets this for free-text queries. */
   useSemanticSearch?: boolean;
+  /** 1-based page number — feed the previous result's `nextPage` back in here. */
   cursor?: number;
   direction?: "forward" | "backward";
 }
 
 export interface ProductsGetAllResult {
   products: Array<ProductInventory & { product: Product }>;
-  nextCursor?: number | null;
-  prevCursor?: number | null;
+  /** Next `cursor` value; `null` on the last page. */
+  nextPage: number | null;
+  total: number;
+  totalPages: number;
   [key: string]: unknown;
+}
+
+export interface CategoriesWithProductsInput {
+  /** @default "GROCERY" */
+  department?: string;
+  /** @default the client's location */
+  locationID?: ObjectId;
+  /** @default "PICKUP" */
+  orderType?: OrderType;
+}
+
+/** Trimmed inventory record used on category shelves. */
+export interface CategoryProduct {
+  id: ObjectId;
+  product: Product;
+  price: number;
+  inStock: boolean;
+  active: boolean;
+  location: ObjectId;
+  ranking?: number;
+  soldByWeight?: boolean;
+  allowsPickup?: boolean;
+  allowsDelivery?: boolean;
+  allowsShipping?: boolean;
+  [key: string]: unknown;
+}
+
+export interface CategoriesWithProductsResult {
+  categories: Array<ProductCategory & { products: CategoryProduct[] }>;
 }
 
 export interface ProductFilters {
