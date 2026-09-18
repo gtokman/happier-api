@@ -1,6 +1,6 @@
 import { HappierGraphQLError } from "./errors.js";
 import type { HappierHttp } from "./http.js";
-import type { ObjectId, Order, OrdersPage, ProductInventory } from "./types.js";
+import type { ObjectId, Order, OrderQueryParams, OrdersPage, ProductInventory } from "./types.js";
 
 /** The two operations the app was observed issuing, verbatim. */
 export const PRODUCT_INVENTORY_QUERY = /* GraphQL */ `
@@ -180,18 +180,25 @@ export const GET_ORDER_BY_ID_QUERY = /* GraphQL */ `
 
 /**
  * Every order belonging to the signed-in user. Not observed in the app capture;
- * the field exists on the schema (`Query.getOrders: OrdersResponse`) and takes
- * no arguments.
+ * the field exists on the schema as
+ * `Query.getOrders(queryParams: OrderQueryParams): OrdersResponse`. The
+ * argument is nullable in the schema but the resolver destructures `sort` from
+ * it, so an object must always be sent.
  */
 export const GET_ORDERS_QUERY = /* GraphQL */ `
-  query GetOrders {
-    getOrders {
+  query GetOrders($queryParams: OrderQueryParams) {
+    getOrders(queryParams: $queryParams) {
       totalPages
       totalResults
       orders {${ORDER_FIELDS}      }
     }
   }
 `;
+
+export const DEFAULT_ORDER_QUERY_PARAMS: Readonly<OrderQueryParams> = {
+  sort: "datePlaced",
+  sortDirection: "desc",
+};
 
 /**
  * GraphQL surface at `POST /graphql`.
@@ -244,8 +251,10 @@ export class GraphQLApi {
   }
 
   /** The signed-in user's orders, with pagination totals. */
-  async getOrders(): Promise<OrdersPage> {
-    const data = await this.request<{ getOrders: OrdersPage }>(GET_ORDERS_QUERY);
+  async getOrders(queryParams: OrderQueryParams = {}): Promise<OrdersPage> {
+    const data = await this.request<{ getOrders: OrdersPage }>(GET_ORDERS_QUERY, {
+      queryParams: { ...DEFAULT_ORDER_QUERY_PARAMS, ...queryParams },
+    });
     return data.getOrders;
   }
 }

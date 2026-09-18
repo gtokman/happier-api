@@ -39,6 +39,7 @@ export type {
 } from "./auth.js";
 
 export {
+  DEFAULT_ORDER_QUERY_PARAMS,
   GraphQLApi,
   GET_ORDER_BY_ID_QUERY,
   GET_ORDERS_QUERY,

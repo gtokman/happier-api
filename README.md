@@ -219,8 +219,10 @@ extend `HappierError`.
   only ever returned `304 Not Modified` in the captures, so their response shapes
   are typed as open records. Everything else is typed from an observed body.
 - `orders.list` (`GetOrders`) was not in the app capture; it was found on the
-  GraphQL schema and takes no arguments, so its pagination (`totalPages`) is
-  untested beyond a single page.
+  GraphQL schema. Its `OrderQueryParams` argument (`sort`, `sortDirection`,
+  `page`, `numResults`) was mapped from validation errors, and the resolver
+  requires `sort`, so the client always sends `datePlaced desc` unless you
+  override it. Pagination is untested beyond a single page.
 - `Order.orderType` (`local` / `inStore`) is a different vocabulary from the
   checkout `OrderType` (`PICKUP` / `DELIVERY` / `SHIPPING`), and `datePlaced` /
   `dueDate` are millisecond-epoch strings.

@@ -717,6 +717,21 @@ export interface Order {
   [key: string]: unknown;
 }
 
+/**
+ * `OrderQueryParams` input for `Query.getOrders`. Fields discovered from the
+ * schema's validation errors (introspection is disabled); the resolver reads
+ * `sort` unconditionally, so callers always send at least that.
+ */
+export interface OrderQueryParams {
+  /** Order field to sort by, e.g. `datePlaced`. */
+  sort?: string;
+  sortDirection?: "asc" | "desc";
+  /** 1-based page index. */
+  page?: number;
+  /** Page size. */
+  numResults?: number;
+}
+
 /** `Query.getOrders` — the signed-in user's orders plus pagination totals. */
 export interface OrdersPage {
   orders: Order[];
