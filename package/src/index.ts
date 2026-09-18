@@ -38,7 +38,12 @@ export type {
   HappierIdTokenClaims,
 } from "./auth.js";
 
-export { GraphQLApi, GET_ORDER_BY_ID_QUERY, PRODUCT_INVENTORY_QUERY } from "./graphql.js";
+export {
+  GraphQLApi,
+  GET_ORDER_BY_ID_QUERY,
+  GET_ORDERS_QUERY,
+  PRODUCT_INVENTORY_QUERY,
+} from "./graphql.js";
 export { TrpcApi } from "./trpc.js";
 export type {
   CategoriesWithProductsInput,

@@ -717,6 +717,13 @@ export interface Order {
   [key: string]: unknown;
 }
 
+/** `Query.getOrders` — the signed-in user's orders plus pagination totals. */
+export interface OrdersPage {
+  orders: Order[];
+  totalPages: number;
+  totalResults: number;
+}
+
 /** Everything the app's order screen loads, in one object. */
 export interface OrderDetail {
   order: Order;

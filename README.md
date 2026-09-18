@@ -152,7 +152,8 @@ await client.loyalty.profile(); // points, tier, vouchers
 
 // Orders
 await client.orders.countSince(new Date(Date.now() - 30 * 864e5));
-const order = await client.orders.get("9eb8a23bc44ee8a4b3ad60aa");
+const { orders, totalResults } = await client.orders.list(); // history, newest first
+const order = await client.orders.get(orders[0]?._id ?? "9eb8a23bc44ee8a4b3ad60aa");
 order.lineItems.map((li) => `${li.quantity}x ${li.itemName}`);
 new Date(Number(order.datePlaced)); // epoch-millis string, not ISO
 if ("jobConfigurations" in order.deliveryDetails!) {
@@ -181,11 +182,11 @@ Three protocols behind one host and one auth contract:
 
 **REST** — `client.business` (settings, delivery slots), `client.products`
 (related, group inventory), `client.checkout` (create, taxes, shipping rates,
-offers), `client.orders` (get, detail, delivery details, refunds, payments, count),
+offers), `client.orders` (list, get, detail, delivery details, refunds, payments, count),
 `client.user` (me, addresses, cards, Stripe setup intent), `client.loyalty`
 (cards, profile), `client.analytics` (auth/cart/catalog events).
 
-**GraphQL** (`POST /graphql`) — `ProductInventory`, `GetOrderById`.
+**GraphQL** (`POST /graphql`) — `ProductInventory`, `GetOrderById`, `GetOrders`.
 
 **tRPC** (`GET /trpc/…?batch=1`) — `products.getAll`, `products.getFilters`,
 `products.getSubCategories`, `products.getCategoriesWithProducts`,
@@ -217,8 +218,9 @@ extend `HappierError`.
 - `/api/v2/user/me`, `/api/v2/user/address` and `/api/v2/order/delivery-details`
   only ever returned `304 Not Modified` in the captures, so their response shapes
   are typed as open records. Everything else is typed from an observed body.
-- There is no order *list* endpoint on this host — the app reads order history
-  elsewhere. `orders.get` needs an order id you already have.
+- `orders.list` (`GetOrders`) was not in the app capture; it was found on the
+  GraphQL schema and takes no arguments, so its pagination (`totalPages`) is
+  untested beyond a single page.
 - `Order.orderType` (`local` / `inStore`) is a different vocabulary from the
   checkout `OrderType` (`PICKUP` / `DELIVERY` / `SHIPPING`), and `datePlaced` /
   `dueDate` are millisecond-epoch strings.
