@@ -131,8 +131,21 @@ await client.checkout.offers(checkout._id!);
 await client.user.me();
 await client.user.cards();
 await client.loyalty.cards();
+await client.loyalty.profile(); // points, tier, vouchers
+
+// Orders
 await client.orders.countSince(new Date(Date.now() - 30 * 864e5));
-await client.orders.get("9eb8a23bc44ee8a4b3ad60aa");
+const order = await client.orders.get("9eb8a23bc44ee8a4b3ad60aa");
+order.lineItems.map((li) => `${li.quantity}x ${li.itemName}`);
+new Date(Number(order.datePlaced)); // epoch-millis string, not ISO
+if ("jobConfigurations" in order.deliveryDetails!) {
+  order.deliveryDetails.jobConfigurations[0]?.publicTrackingUrl; // Nash tracker
+}
+const { payments, refunds } = await client.orders.detail(order._id); // order + payments + refunds + delivery
+
+// Catalog structure
+const { categories } = await client.trpc.getCategoriesWithProducts();
+await client.trpc.getSubCategories({ category: "PRODUCE" });
 ```
 
 ### Escape hatches
@@ -151,7 +164,7 @@ Three protocols behind one host and one auth contract:
 
 **REST** — `client.business` (settings, delivery slots), `client.products`
 (related, group inventory), `client.checkout` (create, taxes, shipping rates,
-offers), `client.orders` (delivery details, refunds, payments),
+offers), `client.orders` (get, detail, delivery details, refunds, payments, count),
 `client.user` (me, addresses, cards, Stripe setup intent), `client.loyalty`
 (cards, profile), `client.analytics` (auth/cart/catalog events).
 
@@ -188,9 +201,14 @@ extend `HappierError`.
 
 ## Caveats
 
-- `/api/v2/user/me`, `/api/v2/user/address` and `/api/v3/user/loyalty/profile`
-  only ever returned `304 Not Modified` in the capture, so their response shapes
+- `/api/v2/user/me`, `/api/v2/user/address` and `/api/v2/order/delivery-details`
+  only ever returned `304 Not Modified` in the captures, so their response shapes
   are typed as open records. Everything else is typed from an observed body.
+- There is no order *list* endpoint on this host — the app reads order history
+  elsewhere. `orders.get` needs an order id you already have.
+- `Order.orderType` (`local` / `inStore`) is a different vocabulary from the
+  checkout `OrderType` (`PICKUP` / `DELIVERY` / `SHIPPING`), and `datePlaced` /
+  `dueDate` are millisecond-epoch strings.
 - Payment flows are partial: the client can create checkouts, quote taxes and
   rates, and mint a Stripe SetupIntent, but order *placement* was not captured.
 - The capture is one session from one store. Other locations or businesses may

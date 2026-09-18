@@ -225,6 +225,315 @@ components:
             platform: { type: string, examples: ["mobile"] }
       required: [eventName, properties]
 
+    ProductCategory:
+      type: object
+      additionalProperties: true
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        name: { type: string, examples: ["Refrigerated"] }
+        identifier:
+          type: string
+          description: Stable code used as `category` in searches.
+          examples: ["DAIRY", "PRODUCE"]
+        department: { type: string, examples: ["GROCERY"] }
+        order: { type: integer }
+        active: { type: boolean }
+        allowsPickup: { type: boolean }
+        allowsDelivery: { type: boolean }
+        allowsShipping: { type: boolean }
+        isBeverageBar: { type: boolean }
+        banner: { type: [string, "null"] }
+        icon: { type: [string, "null"] }
+      required: [_id, name, identifier]
+
+    ProductSubCategory:
+      type: object
+      additionalProperties: true
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        category: { $ref: "#/components/schemas/ObjectId" }
+        name: { type: string, examples: ["Coffee"] }
+        identifier:
+          type: string
+          description: Stable code used as `subCategory` in searches.
+          examples: ["FRCOFFEE"]
+        active: { type: boolean }
+      required: [_id, category, name, identifier, active]
+
+    CategoryProduct:
+      type: object
+      additionalProperties: true
+      description: Trimmed inventory record used on category shelves.
+      properties:
+        id: { $ref: "#/components/schemas/ObjectId" }
+        product: { $ref: "#/components/schemas/Product" }
+        location: { $ref: "#/components/schemas/ObjectId" }
+        price: { type: number }
+        inStock: { type: boolean }
+        active: { type: boolean }
+        ranking: { type: number }
+        soldByWeight: { type: boolean }
+        allowsPickup: { type: boolean }
+        allowsDelivery: { type: boolean }
+        allowsShipping: { type: boolean }
+      required: [id, product, price, inStock, active, location]
+
+    Payment:
+      type: object
+      additionalProperties: true
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        checkout: { $ref: "#/components/schemas/ObjectId" }
+        business: { $ref: "#/components/schemas/ObjectId" }
+        location: { $ref: "#/components/schemas/ObjectId" }
+        paymentType:
+          type: string
+          description: "`STRIPE` for app orders, `DATA_CAP` for in-store terminal sales."
+          examples: [STRIPE, DATA_CAP]
+        amount: { type: number, description: Settled amount }
+        authorizedAmount:
+          type: number
+          description: Pre-auth amount for weighed / substitutable carts.
+        status: { type: string, examples: [paid] }
+        refundStatus: { type: string }
+        amountRefunded: { type: number }
+        externalServiceID:
+          type: string
+          description: Stripe PaymentIntent id, or the terminal's invoice number for `DATA_CAP`.
+          examples: ["pi_3UFgh0KA7JDnUlfh00eHaTNu"]
+        device:
+          $ref: "#/components/schemas/ObjectId"
+          description: POS terminal — in-store payments only.
+        testMode: { type: boolean }
+        isSafDecline: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [_id, checkout, business, location, paymentType, amount, status]
+
+    OrderLineItem:
+      type: object
+      additionalProperties: true
+      description: >-
+        A line on a placed order. App orders also carry `name` / `cartID`; POS
+        orders carry tax breakdowns. Both carry `itemName`.
+      properties:
+        id: { $ref: "#/components/schemas/ObjectId" }
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        productID: { $ref: "#/components/schemas/ObjectId" }
+        productInventoryID: { $ref: "#/components/schemas/ObjectId" }
+        itemName: { type: string }
+        name: { type: string }
+        price: { type: number, description: Unit price charged }
+        originalPrice: { type: number, description: Shelf price before discounts }
+        customerSeenPrice: { type: number }
+        quantity:
+          type: number
+          description: Fulfilled quantity — fractional for weighed items.
+        requestedQty: { type: number, description: Quantity requested before picking }
+        itemTotal: { type: number }
+        images: { type: array, items: { $ref: "#/components/schemas/Image" } }
+        size: { type: [number, string] }
+        unitOfMeasure: { type: string }
+        SKU: { type: string }
+        upcBarcode: { type: string }
+        soldByWeight: { type: boolean }
+        taxable: { type: boolean }
+        ebtEligible: { type: boolean }
+        substitute: { type: [boolean, "null"], description: Whether the shopper allowed substitution }
+        substitutedBy:
+          type: [object, "null"]
+          additionalProperties: true
+          description: What the picker swapped in, when substituted.
+        comment: { type: [string, "null"] }
+        cartID: { $ref: "#/components/schemas/ObjectId" }
+        taxesCharged: { type: number }
+        taxesExempted: { type: number }
+        product:
+          $ref: "#/components/schemas/Product"
+          description: Full catalog record, denormalized at order time.
+      required: [id, _id, productID, productInventoryID, itemName, price, quantity]
+
+    Order:
+      type: object
+      additionalProperties: true
+      description: >-
+        A placed order, as returned by the `GetOrderById` GraphQL query.
+        `datePlaced` / `dueDate` are millisecond-epoch strings, not ISO.
+        `orderType` here (`local` = app delivery, `inStore` = POS sale) is a
+        different vocabulary from the checkout `OrderType`.
+      properties:
+        _id: { $ref: "#/components/schemas/ObjectId" }
+        orderNumber: { type: string, examples: ["15889"] }
+        externalID: { type: string, description: Source checkout id }
+        business: { $ref: "#/components/schemas/ObjectId" }
+        location: { $ref: "#/components/schemas/ObjectId" }
+        uid: { type: string, description: Owning user id }
+        platform: { type: string, examples: [vendora_split_tender, vendora_pos] }
+        status: { type: string, examples: [created, fulfilled] }
+        internalStatus: { type: string }
+        paymentStatus: { type: string, examples: [paid] }
+        fulfillmentStatus: { type: string, examples: [fulfilled] }
+        internalFulfillmentStatus: { type: string }
+        pickingStatus: { type: string }
+        pickingInfo:
+          type: array
+          items:
+            type: object
+            properties:
+              lineItemProductId: { $ref: "#/components/schemas/ObjectId" }
+              cartID: { $ref: "#/components/schemas/ObjectId" }
+              pickedQty: { type: number }
+              notFoundQty: { type: number }
+        orderType: { type: string, examples: [local, inStore] }
+        attributes: { type: array, items: { type: string }, examples: [[DELIVERY]] }
+        datePlaced: { type: string, description: Millisecond epoch as a string, examples: ["1757703421980"] }
+        dueDate: { type: string, description: Millisecond epoch as a string }
+        dueASAP: { type: boolean }
+        numItems: { type: number, description: Sum of quantities — fractional when weighed items are present }
+        lineItems: { type: array, items: { $ref: "#/components/schemas/OrderLineItem" } }
+        discounts:
+          type: array
+          description: Promotions (TPRs, coupons) applied, with per-line applications.
+          items: { type: object, additionalProperties: true }
+        note: { type: string }
+        currency: { type: [string, "null"], examples: [USD] }
+        totalPrice: { type: number }
+        totalShipping: { type: number }
+        totalTax: { type: number }
+        totalTip: { type: number }
+        shippingAddress:
+          allOf:
+            - $ref: "#/components/schemas/Address"
+            - type: object
+              additionalProperties: true
+              properties:
+                phoneNumber: { type: string }
+                selectedRate: { type: string, examples: [Delivery] }
+                timeslotText: { type: string, examples: ["ASAP (1.5 hours)"] }
+                loyaltyPointsBalance: { type: number, description: POS orders only }
+        shipmentInfo: { type: array, items: {} }
+        deliveryDetails:
+          type: object
+          additionalProperties: true
+          description: >-
+            Nash delivery job (`id`, `status`, `portalUrl`,
+            `jobConfigurations[].publicTrackingUrl`, `jobConfigurations[].package`
+            with pickup/dropoff locations, `jobConfigurations[].advancedTask.delivery`
+            with courier state). Empty object for pickup and POS orders.
+        clientDetails:
+          type: [object, "null"]
+          additionalProperties: true
+          properties:
+            os: { type: string, examples: [android, ios] }
+            appVersion: { type: string }
+        testOrder: { type: boolean }
+        twillioConversationID: { type: [string, "null"] }
+        locationInfo:
+          type: object
+          properties:
+            name: { type: string }
+            address: { type: string }
+            street2: { type: [string, "null"] }
+            city: { type: string }
+            state: { type: string }
+            zip: { type: string }
+            latitude: { type: string }
+            longitude: { type: string }
+        loyalty:
+          type: object
+          properties:
+            isLoyaltyTransaction: { type: boolean }
+            points: { type: number }
+      required: [_id, orderNumber, business, location, uid, status, paymentStatus, orderType, datePlaced, lineItems, totalPrice]
+
+    LoyaltyBenefit:
+      type: object
+      description: A voucher or freebie on a Froogal loyalty account.
+      properties:
+        platform: { type: string, examples: [FROOGAL] }
+        benefitData:
+          type: object
+          additionalProperties: true
+          properties:
+            id: { type: integer }
+            name: { type: string, examples: ["Free Delivery"] }
+            type: { type: string, examples: [voucher] }
+            worth: { type: string }
+            isPaid: { type: boolean }
+            validOutlets: { type: array, items: { type: string } }
+            validDays: { type: string, description: Seven flags, Monday-first, examples: ["1111111"] }
+            expiryDate: { type: [string, "null"] }
+            reusable: { type: boolean }
+            image: { type: string, format: uri }
+            freebieItem:
+              type: object
+              additionalProperties: true
+              description: The redeemable instance, when one has been issued.
+
+    LoyaltyProfile:
+      type: object
+      additionalProperties: true
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        phoneNumber: { type: string }
+        loyaltyAccount:
+          type: object
+          properties:
+            pointsBalance: { type: integer }
+            platformSpecificData:
+              type: object
+              additionalProperties: true
+              properties:
+                loyaltyId: { type: integer }
+                membershipCardNumber: { type: string }
+                visits: { type: integer }
+                spending: { type: string, description: Lifetime spend, abbreviated, examples: ["11K"] }
+                currentYearSpending: { type: string }
+                points: { type: integer }
+                pointsOnHold: { type: integer }
+                currentCardId: { type: integer, description: Matches a loyalty card `id` }
+                currentCardSlug: { type: string, examples: [happier-black-monthly] }
+                expiry: { type: string, format: date, description: Membership expiry }
+                isPaid: { type: boolean }
+                autoRenews: { type: integer }
+                status: { type: string, examples: [approved] }
+                isMember: { type: boolean }
+                isEnrolled: { type: boolean }
+                isBlocked: { type: boolean }
+                enrolledPrograms: { type: array, items: { type: integer } }
+                pointsEarned: { type: integer }
+                pointsRedeemed: { type: integer }
+                currencyConversionRate: { type: string, description: Points per currency unit, examples: ["10.00"] }
+          required: [pointsBalance]
+        loyaltyTier:
+          type: object
+          properties:
+            uid: { type: integer, description: Matches a loyalty card `uid` }
+            pointsRedemptionValue: { type: number, description: Dollar value of one point }
+        loyaltyBenefits:
+          type: array
+          description: Vouchers already on the account.
+          items: { $ref: "#/components/schemas/LoyaltyBenefit" }
+        availableBenefits:
+          type: array
+          description: Vouchers the user can claim this period.
+          items: { $ref: "#/components/schemas/LoyaltyBenefit" }
+        platform: { type: string, examples: [FROOGAL] }
+        accountStatus: { type: string, examples: [ACTIVE] }
+        customerGroups:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            properties:
+              id: { type: integer }
+              customerGroupPublicId: { type: string }
+              name: { type: string }
+              groupType: { type: string }
+              status: { type: string }
+      required: [firstName, lastName, loyaltyAccount]
+
 paths:
   /api/v1/business/settings:
     get:
@@ -510,7 +819,12 @@ paths:
     get:
       tags: [orders]
       operationId: getOrderDeliveryDetails
-      summary: Delivery details for an order
+      summary: Live courier tracking for a delivery order
+      description: >-
+        Only ever returned `304` during the captures, so the body shape is
+        unverified. A dispatch-time snapshot of the same Nash (`usenash.com`)
+        delivery job is embedded in the `GetOrderById` GraphQL result as
+        `deliveryDetails` — see `#/components/schemas/Order`.
       parameters:
         - $ref: "#/components/parameters/OrderIdQuery"
       responses:
@@ -519,16 +833,18 @@ paths:
           content:
             application/json:
               schema: { type: object, additionalProperties: true }
+        "304": { description: Not modified }
 
   /api/v2/order/refunds:
     get:
       tags: [orders]
       operationId: getOrderRefunds
+      summary: Refunds issued against an order
       parameters:
         - $ref: "#/components/parameters/OrderIdQuery"
       responses:
         "200":
-          description: Refunds
+          description: Refunds. Never observed non-empty.
           content:
             application/json:
               schema:
@@ -537,12 +853,17 @@ paths:
                   - type: object
                     properties:
                       refunds: { type: array, items: {} }
+        "304": { description: Not modified }
 
   /api/v2/orders/payments:
     get:
       tags: [orders]
       operationId: getOrderPayments
       summary: Payments recorded against an order
+      description: >-
+        App orders pay through Stripe (`paymentType: STRIPE`, `externalServiceID`
+        is the PaymentIntent id). In-store receipts pay through the POS terminal
+        (`paymentType: DATA_CAP`, plus a `device` id).
       parameters:
         - $ref: "#/components/parameters/OrderIdQuery"
       responses:
@@ -557,16 +878,8 @@ paths:
                     properties:
                       payments:
                         type: array
-                        items:
-                          type: object
-                          additionalProperties: true
-                          properties:
-                            _id: { $ref: "#/components/schemas/ObjectId" }
-                            checkout: { $ref: "#/components/schemas/ObjectId" }
-                            paymentType: { type: string, examples: ["DATA_CAP"] }
-                            amount: { type: number }
-                            status: { type: string, examples: ["paid"] }
-                            amountRefunded: { type: number }
+                        items: { $ref: "#/components/schemas/Payment" }
+        "304": { description: Not modified }
 
   /api/v2/user/me:
     get:
@@ -670,12 +983,18 @@ paths:
     get:
       tags: [loyalty]
       operationId: getLoyaltyProfile
+      summary: Loyalty standing — points, tier, vouchers
       responses:
         "200":
-          description: Loyalty standing. Shape unverified (only `304` observed).
+          description: Froogal-backed loyalty account for the signed-in user.
           content:
             application/json:
-              schema: { type: object, additionalProperties: true }
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/StatusEnvelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/LoyaltyProfile" }
         "304": { description: Not modified }
 
   /api/v1/analytics/auth-events:
@@ -726,6 +1045,11 @@ paths:
         Operations observed: `ProductInventory($productInventoryId: ID!)` for full
         product detail, and `GetOrderById($id: ID!)` for order detail including
         line items. Both query strings ship with the package.
+
+        `GetOrderById` returns `{ data: { getOrderById: Order } }` — see
+        `#/components/schemas/Order`. It is the only route that returns line
+        items, and covers in-store POS receipts as well as app orders. No order
+        *list* operation was observed on this host.
       parameters:
         - $ref: "#/components/parameters/LocationHeader"
       requestBody:
@@ -769,6 +1093,14 @@ paths:
         Procedures observed: `products.getAll`, `products.getFilters`,
         `products.getSubCategories`, `products.getCategoriesWithProducts`,
         `orders.getUserOrderCount`.
+
+        | Procedure | Input | `result.data` |
+        | --- | --- | --- |
+        | `products.getAll` | `{ searchQuery?, category?, subCategory?, brands?, attributes?, tags?, orderType, useSemanticSearch?, cursor?, direction? }` | `{ products: ProductInventory[], nextPage: int\|null, total, totalPages }` |
+        | `products.getFilters` | `{ searchQuery?, category? }` | `{ brands: string[], attributes: string[], tags: string[] }` |
+        | `products.getSubCategories` | `{ category }` (category `identifier`) | `ProductSubCategory[]` |
+        | `products.getCategoriesWithProducts` | `{ department, locationID, orderType }` | `{ categories: (ProductCategory & { products: CategoryProduct[] })[] }` |
+        | `orders.getUserOrderCount` | `{ fromDate: ISO-8601 }` | `integer` |
 
         Example:
 

@@ -23,6 +23,8 @@ import type {
   LoyaltyProfileResponse,
   ObjectId,
   Order,
+  OrderDeliveryDetailsResponse,
+  OrderDetail,
   OrderPaymentsResponse,
   OrderRefundsResponse,
   OrderType,
@@ -64,7 +66,7 @@ export class HappierClient {
     this.business = new BusinessResource(this.http);
     this.products = new ProductsResource(this.http);
     this.checkout = new CheckoutResource(this.http);
-    this.orders = new OrdersResource(this.http, this.graphql);
+    this.orders = new OrdersResource(this.http, this.graphql, this.trpc);
     this.user = new UserResource(this.http);
     this.loyalty = new LoyaltyResource(this.http);
     this.analytics = new AnalyticsResource(this.http);
@@ -191,29 +193,67 @@ class OrdersResource {
   constructor(
     private readonly http: HappierHttp,
     private readonly graphql: GraphQLApi,
+    private readonly trpc: TrpcApi,
   ) {}
 
-  /** Full order detail, via GraphQL — the only route that returns line items. */
+  /**
+   * Full order detail, via GraphQL — the only route that returns line items.
+   *
+   * Covers app orders and in-store POS receipts alike (`order.orderType` tells
+   * them apart). Delivery tracking, when present, is inline at
+   * `order.deliveryDetails`.
+   */
   get(orderId: ObjectId): Promise<Order> {
     return this.graphql.getOrderById(orderId);
   }
 
-  deliveryDetails(orderId: ObjectId): Promise<Record<string, unknown>> {
+  /**
+   * Everything the app's order screen fetches, in parallel: the order plus its
+   * payments, refunds and delivery details.
+   */
+  async detail(orderId: ObjectId): Promise<OrderDetail> {
+    const [order, payments, refunds, deliveryDetails] = await Promise.all([
+      this.get(orderId),
+      this.payments(orderId),
+      this.refunds(orderId),
+      this.deliveryDetails(orderId),
+    ]);
+    return {
+      order,
+      payments: payments.payments,
+      refunds: refunds.refunds,
+      deliveryDetails,
+    };
+  }
+
+  /**
+   * Live courier tracking for a delivery order. Only ever observed as `304`, so
+   * the body is untyped; `Order.deliveryDetails` from {@link get} carries a
+   * typed dispatch-time snapshot of the same Nash job.
+   */
+  deliveryDetails(orderId: ObjectId): Promise<OrderDeliveryDetailsResponse> {
     return this.http.request("api/v2/order/delivery-details", { query: { orderId } });
   }
 
+  /** Refunds issued against an order. */
   refunds(orderId: ObjectId): Promise<OrderRefundsResponse> {
     return this.http.request("api/v2/order/refunds", { query: { orderId } });
   }
 
+  /** Payment records (Stripe, or the POS terminal for in-store orders). */
   payments(orderId: ObjectId): Promise<OrderPaymentsResponse> {
     return this.http.request("api/v2/orders/payments", { query: { orderId } });
   }
 
-  /** Orders placed since `fromDate`. Backed by tRPC. */
+  /**
+   * Number of orders placed since `fromDate`. Backed by tRPC.
+   *
+   * The app calls this with "30 days ago" on the home screen to decide whether
+   * to show the reorder shelf.
+   */
   countSince(fromDate: Date | string): Promise<number> {
     const iso = typeof fromDate === "string" ? fromDate : fromDate.toISOString();
-    return new TrpcApi(this.http).getUserOrderCount({ fromDate: iso });
+    return this.trpc.getUserOrderCount({ fromDate: iso });
   }
 }
 
