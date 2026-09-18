@@ -26,6 +26,7 @@ import type {
   OrderDeliveryDetailsResponse,
   OrderDetail,
   OrderPaymentsResponse,
+  OrderQueryParams,
   OrderRefundsResponse,
   OrdersPage,
   OrderType,
@@ -210,11 +211,11 @@ class OrdersResource {
 
   /**
    * The signed-in user's order history, newest first. Same `Order` shape as
-   * {@link get}, line items included. Backed by the `GetOrders` GraphQL query,
-   * which takes no arguments.
+   * {@link get}, line items included. Backed by the `GetOrders` GraphQL query;
+   * `params` overrides the default `datePlaced desc` sort and selects a page.
    */
-  async list(): Promise<OrdersPage> {
-    const page = await this.graphql.getOrders();
+  async list(params: OrderQueryParams = {}): Promise<OrdersPage> {
+    const page = await this.graphql.getOrders(params);
     const orders = [...page.orders].sort((a, b) => Number(b.datePlaced) - Number(a.datePlaced));
     return { ...page, orders };
   }

@@ -1053,14 +1053,16 @@ paths:
       description: |
         Operations observed: `ProductInventory($productInventoryId: ID!)` for full
         product detail, and `GetOrderById($id: ID!)` for order detail including
-        line items. A third, `GetOrders` (no arguments), was found on the schema
+        line items. A third, `GetOrders($queryParams: OrderQueryParams)`, was found on the schema
         rather than in the capture. All three query strings ship with the package.
 
         `GetOrderById` returns `{ data: { getOrderById: Order } }` — see
         `#/components/schemas/Order`. It covers in-store POS receipts as well as
         app orders. `GetOrders` returns
         `{ data: { getOrders: { orders: [Order], totalPages, totalResults } } }`
-        for the signed-in user — see `#/components/schemas/OrdersPage`.
+        for the signed-in user — see `#/components/schemas/OrdersPage`. Its
+        `queryParams` input takes `sort`, `sortDirection`, `page` and
+        `numResults`; the resolver requires `sort`.
       parameters:
         - $ref: "#/components/parameters/LocationHeader"
       requestBody:
